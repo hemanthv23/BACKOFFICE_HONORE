@@ -18,8 +18,8 @@ import { RouterLink, RouterOutlet } from '@angular/router';
                                 </div>
                             </div>
                             <div>
-                                <h1 class="text-xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight">HONOR<span class="text-amber-500">E</span></h1>
-                                <p class="text-xs sm:text-base text-gray-600 font-medium">Traditional Baking</p>
+                                <h1 class="text-xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight">HEMANT<span class="text-amber-500">H</span></h1>
+                                <p class="text-xs sm:text-base text-gray-600 font-medium">JUST Baking</p>
                             </div>
                         </div>
 
