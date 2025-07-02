@@ -18,8 +18,8 @@ import { RouterLink, RouterOutlet } from '@angular/router';
                                 </div>
                             </div>
                             <div>
-                                <h1 class="text-xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight">HEMANT<span class="text-amber-500">H</span></h1>
-                                <p class="text-xs sm:text-base text-gray-600 font-medium">JUST Baking</p>
+                                <h1 class="text-xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight">HONOR<span class="text-amber-500">E</span></h1>
+                                <p class="text-xs sm:text-base text-gray-600 font-medium">Traditional | Baking</p>
                             </div>
                         </div>
 
@@ -144,6 +144,7 @@ export class BackOffice {
         { name: 'Communication', imgSrc: 'https://img.freepik.com/free-vector/group-people-teamwork-with-speech-bubble_24877-56205.jpg?semt=ais_hybrid&w=740', routerLink: 'communication', roles: ['Developer'] },
         { name: 'Reports', imgSrc: 'https://cdn-icons-png.flaticon.com/512/1055/1055644.png', routerLink: 'reports', roles: ['Developer', 'Supporter'] },
         { name: 'App Settings', imgSrc: 'https://cdn-icons-png.flaticon.com/512/9662/9662287.png', routerLink: 'appsettings', roles: ['Developer'] }
+        // { name: 'test', imgSrc: 'https://cdn.bap-software.net/2024/02/22165839/testdebug2.jpg', routerLink: 'test', roles: ['Developer'] }
     ];
 
     getFilteredMenuItems() {

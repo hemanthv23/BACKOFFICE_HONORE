@@ -163,7 +163,7 @@ import html2pdf from 'html2pdf.js';
                             <div class="flex justify-between items-center">
                                 <span [class]="orderUtilsService.getOrderTypeClass(order.orderType)">{{ order.orderType }}</span>
                                 <div class="flex gap-2">
-                                    <button (click)="viewOrderDetails(order)" class="text-blue-600 hover:text-blue-800 text-sm font-medium" title="View Order Details">View</button>
+                                    <a [routerLink]="['details', order.id]" class="text-blue-600 hover:text-blue-800 text-sm font-medium" title="View Order Details">View</a>
                                     <button (click)="editOrder(order)" class="text-green-600 hover:text-green-800 text-sm font-medium" title="Edit Order">Edit</button>
                                     <button (click)="printOrder(order)" class="text-purple-600 hover:text-purple-900 text-sm font-medium" title="Print Order PDF">Print</button>
                                     <button
@@ -195,7 +195,9 @@ import html2pdf from 'html2pdf.js';
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <tr *ngFor="let order of paginatedOrders" class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{{ order.id }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <a [routerLink]="['details', order.id]" class="text-blue-600 hover:text-blue-900 font-medium">#{{ order.id }}</a>
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div>
                                             <div class="text-sm font-medium text-gray-900">{{ order.customer }}</div>
@@ -213,7 +215,7 @@ import html2pdf from 'html2pdf.js';
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.deliveryDate | date: 'short' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div class="flex space-x-2">
-                                            <button (click)="viewOrderDetails(order)" class="text-blue-600 hover:text-blue-900" title="View Order Details"><i class="fas fa-eye"></i></button>
+                                            <a [routerLink]="['details', order.id]" class="text-blue-600 hover:text-blue-900" title="View Order Details"><i class="fas fa-eye"></i></a>
                                             <button (click)="editOrder(order)" class="text-green-600 hover:text-green-900" title="Edit Order"><i class="fas fa-edit"></i></button>
                                             <button (click)="printOrder(order)" class="text-purple-600 hover:text-purple-900" title="Print Order PDF"><i class="fas fa-print"></i></button>
                                             <button (click)="cancelOrder(order)" [disabled]="order.status === 'Completed' || order.status === 'Cancelled'" class="text-red-600 hover:text-red-900 disabled:text-gray-400" title="Cancel Order">

@@ -1,46 +1,47 @@
-// ==========================================================
-// src/app/apps/backoffice/components/coupons/components/coupon-stats.ts
-// Provides methods for calculating coupon-related statistics.
-// Depends on `CouponData` for access to coupon data.
-// ==========================================================
+import { Coupon, CouponStatusEnum, DiscountTypeEnum } from '../interfaces';
 import { CouponData } from './coupon-data';
 
 export class CouponStats {
     constructor(private couponData: CouponData) {}
 
-    /**
-     * Returns the total count of all coupons.
-     * @returns {number} The total number of coupons.
-     */
     getTotalCoupons(): number {
         return this.couponData.allCoupons.length;
     }
 
-    /**
-     * Returns the number of active coupons.
-     * @returns {number} The count of active coupons.
-     */
     getActiveCoupons(): number {
-        return this.couponData.allCoupons.filter((c) => c.status === 'Active').length;
+        return this.couponData.allCoupons.filter((coupon) => coupon.status === CouponStatusEnum.Active).length;
     }
 
-    /**
-     * Returns the total usage count across all coupons.
-     * @returns {number} The sum of usage counts.
-     */
+    getExpiredCoupons(): number {
+        return this.couponData.allCoupons.filter((coupon) => coupon.status === CouponStatusEnum.Expired).length;
+    }
+
+    getUsedCoupons(): number {
+        return this.couponData.allCoupons.filter((coupon) => coupon.status === CouponStatusEnum.Inactive).length;
+    }
+
     getTotalUsage(): number {
-        return this.couponData.allCoupons.reduce((total, coupon) => total + coupon.usageCount, 0);
+        return this.couponData.allCoupons.reduce((sum, coupon) => sum + (coupon.usageCount || 0), 0);
     }
 
-    /**
-     * Calculates the total estimated savings across all coupons.
-     * (Simplified calculation: assumes an average order value of 500 for percentage discounts).
-     * @returns {number} The total estimated savings.
-     */
     getTotalSavings(): number {
-        return this.couponData.allCoupons.reduce((total, coupon) => {
-            const savings = coupon.discountType === 'percentage' ? coupon.usageCount * (coupon.discountValue / 100) * 500 : coupon.usageCount * coupon.discountValue;
-            return total + savings;
-        }, 0);
+        // This is a simplified calculation. For percentage coupons,
+        // it just sums the percentage value. In a real scenario,
+        // you'd need to define "savings" more concretely, e.g., based on average order value.
+        // Here, it sums fixed amounts and treats percentage values as their numerical value.
+        return this.couponData.allCoupons.reduce((sum, coupon) => sum + coupon.discountValue, 0);
+    }
+
+    getDiscountTypeDistribution(): { percentage: number; fixed: number } {
+        const percentage = this.couponData.allCoupons.filter((c) => c.discountType === DiscountTypeEnum.Percentage).length;
+        const fixed = this.couponData.allCoupons.filter((c) => c.discountType === DiscountTypeEnum.Fixed).length;
+        return { percentage, fixed };
+    }
+
+    getCouponStatusDistribution(): { active: number; expired: number; inactive: number } {
+        const active = this.getActiveCoupons();
+        const expired = this.getExpiredCoupons();
+        const inactive = this.getUsedCoupons();
+        return { active, expired, inactive };
     }
 }

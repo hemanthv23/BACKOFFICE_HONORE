@@ -1,6 +1,7 @@
 // ==========================================================
 // src/app/apps/backoffice/components/products/products.ts
 // Minimal shell component for Products, importing and utilizing modular logic.
+// Updated to include ProductDescriptionData for editable detailed descriptions.
 // ==========================================================
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -13,6 +14,7 @@ import { ProductData } from './components/product-data';
 import { ProductFiltering } from './components/product-filtering';
 import { ProductModals } from './components/product-modals';
 import { ProductUtils } from './components/product-utils';
+import { ProductDescriptionData } from './components/product-description'; // New import
 
 @Component({
     selector: 'app-products',
@@ -366,6 +368,18 @@ text-xs font-semibold rounded-full bg-orange-100 text-orange-800"
                                 placeholder="Enter quantity"
                             />
                         </div>
+
+                        <!-- Product Description Detail Section (Visible only when editing, now editable) -->
+                        <div *ngIf="productModals.editingProduct">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Product Description Detail</label>
+                            <textarea
+                                [(ngModel)]="productModals.editableProductLongDescription"
+                                name="longDescription"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 h-32 resize-y focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                                placeholder="Enter detailed HTML description here..."
+                            ></textarea>
+                            <p class="text-xs text-gray-500 mt-1">You can use basic HTML tags for formatting (e.g., &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;h3&gt;, &lt;div&gt; with Tailwind classes).</p>
+                        </div>
                     </div>
 
                     <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 mt-6">
@@ -602,13 +616,15 @@ export class ProductsComponent implements OnInit {
     productFiltering: ProductFiltering;
     productModals: ProductModals;
     productUtils: ProductUtils;
+    productDescriptionData: ProductDescriptionData; // New instance for description data
 
     constructor() {
         // Initialize instances, passing dependencies as needed
         this.productData = new ProductData();
         this.productFiltering = new ProductFiltering(this.productData);
-        // ProductModals needs ProductData and ProductFiltering
-        this.productModals = new ProductModals(this.productData, this.productFiltering);
+        this.productDescriptionData = new ProductDescriptionData(); // Initialize new description data class
+        // ProductModals needs ProductData, ProductFiltering, and ProductDescriptionData
+        this.productModals = new ProductModals(this.productData, this.productFiltering, this.productDescriptionData); // Pass new dependency
         // ProductUtils needs ProductData
         this.productUtils = new ProductUtils(this.productData);
 

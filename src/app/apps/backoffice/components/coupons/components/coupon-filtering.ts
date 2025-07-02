@@ -1,47 +1,63 @@
-// ==========================================================
-// src/app/apps/backoffice/components/coupons/components/coupon-filtering.ts
-// Contains logic for filtering and searching coupons.
-// Depends on `CouponData` for the source of coupons.
-// ==========================================================
-import { Coupon } from './interfaces';
+import { Coupon, CouponStatusEnum, CouponTypeEnum } from '../interfaces';
 import { CouponData } from './coupon-data';
 
 export class CouponFiltering {
-    searchTerm: string = '';
-    statusFilter: string = '';
-    typeFilter: string = '';
-
-    private _filteredCoupons: Coupon[] = [];
+    public searchTerm: string = '';
+    public statusFilter: string = ''; // Keep as string for dropdown value
+    public typeFilter: string = ''; // Keep as string for dropdown value
+    public filteredCoupons: Coupon[] = [];
 
     constructor(private couponData: CouponData) {
-        this.filterCoupons(); // Initial filter when instantiated
+        this.filterCoupons(); // Initial filter
     }
 
-    /**
-     * Getter for filtered coupons.
-     * @returns {Coupon[]} The array of coupons after applying filters.
-     */
-    get filteredCoupons(): Coupon[] {
-        return this._filteredCoupons;
-    }
-
-    /**
-     * Applies all active filters and search term to the coupon data.
-     * Updates `_filteredCoupons`.
-     */
     filterCoupons(): void {
-        this._filteredCoupons = this.couponData.allCoupons.filter((coupon) => {
-            const matchesSearch =
-                !this.searchTerm ||
-                coupon.code.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-                coupon.description.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-                (coupon.customerName && coupon.customerName.toLowerCase().includes(this.searchTerm.toLowerCase())) ||
-                (coupon.communityName && coupon.communityName.toLowerCase().includes(this.searchTerm.toLowerCase()));
+        let tempCoupons = [...this.couponData.allCoupons];
 
-            const matchesStatus = !this.statusFilter || coupon.status === this.statusFilter;
-            const matchesType = !this.typeFilter || coupon.type === this.typeFilter;
+        // Apply search term filter
+        if (this.searchTerm) {
+            const lowerCaseSearchTerm = this.searchTerm.toLowerCase();
+            tempCoupons = tempCoupons.filter(
+                (coupon) =>
+                    coupon.name.toLowerCase().includes(lowerCaseSearchTerm) ||
+                    coupon.code.toLowerCase().includes(lowerCaseSearchTerm) ||
+                    (coupon.description && coupon.description.toLowerCase().includes(lowerCaseSearchTerm)) ||
+                    (coupon.customerName && coupon.customerName.toLowerCase().includes(lowerCaseSearchTerm)) ||
+                    (coupon.communityName && coupon.communityName.toLowerCase().includes(lowerCaseSearchTerm))
+            );
+        }
 
-            return matchesSearch && matchesStatus && matchesType;
-        });
+        // Apply status filter
+        if (this.statusFilter) {
+            let statusEnum: CouponStatusEnum | undefined;
+            if (this.statusFilter === 'Active') {
+                statusEnum = CouponStatusEnum.Active;
+            } else if (this.statusFilter === 'Expired') {
+                statusEnum = CouponStatusEnum.Expired;
+            } else if (this.statusFilter === 'Inactive') {
+                statusEnum = CouponStatusEnum.Inactive;
+            }
+
+            if (statusEnum !== undefined) {
+                tempCoupons = tempCoupons.filter((coupon) => coupon.status === statusEnum);
+            }
+        }
+
+        // Apply type filter
+        if (this.typeFilter) {
+            let typeEnum: CouponTypeEnum | undefined;
+            if (this.typeFilter === 'Generate') {
+                // Assuming 'Generate' maps to Generated
+                typeEnum = CouponTypeEnum.Generated;
+            } else if (this.typeFilter === 'Community') {
+                typeEnum = CouponTypeEnum.Community;
+            }
+
+            if (typeEnum !== undefined) {
+                tempCoupons = tempCoupons.filter((coupon) => coupon.type === typeEnum);
+            }
+        }
+
+        this.filteredCoupons = tempCoupons;
     }
 }

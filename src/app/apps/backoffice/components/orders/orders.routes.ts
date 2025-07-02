@@ -4,6 +4,7 @@
 // ==========================================================
 import { Routes } from '@angular/router';
 import { Orders } from './orders'; // Import the main Orders component
+import { OrderDetails } from './components/order-details'; // Add this import
 
 export const ORDERS_ROUTES: Routes = [
     {
@@ -11,5 +12,11 @@ export const ORDERS_ROUTES: Routes = [
         component: Orders,
         title: 'Orders Management', // Added title for browser tab
         data: { breadcrumb: 'Orders' }
+    },
+    {
+        path: 'details/:id', // Add this new route
+        component: OrderDetails,
+        title: 'Order Details',
+        data: { breadcrumb: 'Order Details' }
     }
 ];

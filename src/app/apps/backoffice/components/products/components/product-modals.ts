@@ -2,10 +2,12 @@
 // src/app/apps/backoffice/components/products/components/product-modals.ts
 // Manages the state and logic for various modals in the Products module.
 // Depends on `ProductData` for data manipulation and `ProductFiltering` for re-filtering.
+// Now also depends on `ProductDescriptionData` for detailed product descriptions.
 // ==========================================================
 import { Product, FuturePriceConfig } from './interfaces';
 import { ProductData } from './product-data';
 import { ProductFiltering } from './product-filtering';
+import { ProductDescriptionData } from './product-description'; // New import
 
 export class ProductModals {
     // Add/Edit Product Modal
@@ -24,6 +26,9 @@ export class ProductModals {
         futurePrice: undefined, // Default
         futureEffectiveDate: undefined // Default
     };
+
+    // Property for editable detailed product description HTML
+    editableProductLongDescription: string = ''; // Changed from currentProductDetailedDescriptionHtml
 
     // Confirm Delete Modal
     showConfirmDeleteModal = false;
@@ -49,7 +54,8 @@ export class ProductModals {
 
     constructor(
         private productData: ProductData,
-        private productFiltering: ProductFiltering
+        private productFiltering: ProductFiltering,
+        private productDescriptionData: ProductDescriptionData // New dependency
     ) {}
 
     // --- Add/Edit Product Modal Methods ---
@@ -72,11 +78,13 @@ export class ProductModals {
             futurePrice: undefined,
             futureEffectiveDate: undefined
         };
+        this.editableProductLongDescription = ''; // Clear description for new product
         this.showAddProductModal = true;
     }
 
     /**
      * Opens the edit product modal, populating the form with product data.
+     * Also loads the detailed product description for editing.
      * @param {Product} product The product to edit.
      */
     editProduct(product: Product): void {
@@ -95,13 +103,20 @@ export class ProductModals {
             futurePrice: product.futurePrice, // Load existing future price
             futureEffectiveDate: product.futureEffectiveDate // Load existing future effective date
         };
+
+        // Load detailed product description for editing
+        const detailedDesc = this.productDescriptionData.getDescription(product.id);
+        this.editableProductLongDescription = detailedDesc ? detailedDesc.longDescriptionHtml : '<p>Enter detailed description here...</p>'; // Default placeholder
+
         this.showAddProductModal = true;
     }
 
     /**
-     * Saves a new or edited product.
+     * Saves a new or edited product and its detailed description.
      */
     saveProduct(): void {
+        let savedProduct: Product;
+
         if (this.editingProduct) {
             // Logic for updating an existing product
             const updatedProduct: Product = {
@@ -114,10 +129,17 @@ export class ProductModals {
                 futureEffectiveDate: this.newProduct.futureEffectiveDate
             };
             this.productData.updateProduct(updatedProduct);
+            savedProduct = updatedProduct;
         } else {
             // Logic for adding a new product
-            this.productData.addProduct(this.newProduct);
+            savedProduct = this.productData.addProduct(this.newProduct);
         }
+
+        // Always update the detailed description using the ID of the saved product
+        if (savedProduct) {
+            this.productDescriptionData.updateDescription(savedProduct.id, this.editableProductLongDescription);
+        }
+
         this.closeAddProductModal();
         this.productFiltering.filterProducts(); // Refresh the table
     }
@@ -141,6 +163,7 @@ export class ProductModals {
             futurePrice: undefined,
             futureEffectiveDate: undefined
         };
+        this.editableProductLongDescription = ''; // Clear description on close
     }
 
     /**
@@ -296,7 +319,19 @@ export class ProductModals {
             'Final Selected Products for "All Products" configuration:',
             this.selectedProductsForRemoval.map((p) => p.name)
         );
-        alert('Changes applied! (Check console for updated selection)');
+        // Using a custom message box instead of alert()
+        const messageBox = document.createElement('div');
+        messageBox.innerHTML = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+                <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-xs mx-auto text-center">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">Success!</h2>
+                    <p class="text-gray-700 mb-6">Changes applied! (Check console for updated selection)</p>
+                    <button class="bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 text-sm" onclick="this.parentElement.parentElement.remove()">OK</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(messageBox);
+
         this.closeConfigAllProductsModal();
     }
 }
