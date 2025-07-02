@@ -35,16 +35,16 @@ export class CouponData {
             name: coupon.name,
             code: coupon.code,
             description: coupon.description,
-            discountType: Number(coupon.discountType), // FIXED
+            discountType: Number(coupon.discountType),
             discountValue: coupon.discountValue,
-            status: Number(coupon.status), // FIXED
+            status: Number(coupon.status),
             startDate: coupon.startDate,
             endDate: coupon.endDate,
             usageCount: coupon.usageCount,
             maxUsage: coupon.maxUsage,
             customerName: coupon.customerName,
             communityName: coupon.communityName,
-            type: Number(coupon.type) // FIXED
+            type: Number(coupon.type)
         };
 
         return this.http.post<Coupon>(this.apiUrl, couponToSend).pipe(
@@ -59,14 +59,33 @@ export class CouponData {
 
     updateCoupon(updatedCoupon: Coupon): Observable<any> {
         const url = `${this.apiUrl}/${updatedCoupon.id}`;
-        return this.http.put(url, updatedCoupon).pipe(
+
+        const couponToSend = {
+            id: updatedCoupon.id, // ✅ INCLUDE ID in the body
+            name: updatedCoupon.name,
+            code: updatedCoupon.code,
+            description: updatedCoupon.description,
+            discountType: Number(updatedCoupon.discountType),
+            discountValue: updatedCoupon.discountValue,
+            status: Number(updatedCoupon.status),
+            startDate: updatedCoupon.startDate,
+            endDate: updatedCoupon.endDate,
+            usageCount: updatedCoupon.usageCount,
+            maxUsage: updatedCoupon.maxUsage,
+            customerName: updatedCoupon.customerName,
+            communityName: updatedCoupon.communityName,
+            type: Number(updatedCoupon.type),
+            updatedAt: new Date().toISOString()
+        };
+
+        return this.http.put(url, couponToSend).pipe(
             tap(() => {
                 const currentCoupons = this.allCoupons$.getValue();
                 const index = currentCoupons.findIndex((c) => c.id === updatedCoupon.id);
                 if (index !== -1) {
-                    currentCoupons[index] = updatedCoupon;
+                    currentCoupons[index] = { ...updatedCoupon, ...couponToSend };
                     this.allCoupons$.next([...currentCoupons]);
-                    console.log('Coupon updated via API:', updatedCoupon);
+                    console.log('Coupon updated via API:', couponToSend);
                 }
             }),
             catchError(this.handleError<any>('updateCoupon'))
@@ -89,7 +108,11 @@ export class CouponData {
         return this.getCouponById(id).pipe(
             map((coupon) => {
                 if (!coupon) throw new Error(`Coupon with ID ${id} not found.`);
-                const updatedCoupon = { ...coupon, status: newStatus, updatedAt: new Date().toISOString() };
+                const updatedCoupon = {
+                    ...coupon,
+                    status: newStatus,
+                    updatedAt: new Date().toISOString()
+                };
                 return updatedCoupon;
             }),
             switchMap((updatedCoupon) => this.updateCoupon(updatedCoupon)),

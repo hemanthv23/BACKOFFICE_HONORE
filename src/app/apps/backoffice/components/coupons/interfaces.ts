@@ -9,13 +9,13 @@ export interface Coupon {
     startDate: string;
     endDate: string;
     usageCount: number;
-    maxUsage?: number | null; // API can return null
-    customerName?: string | null; // API can return null
-    communityName?: string | null; // API can return null
+    maxUsage?: number | null;
+    customerName?: string | null;
+    communityName?: string | null;
     type: number;
-    createdAt?: string; // These are typically set by the backend on creation/update
-    updatedAt?: string; // These are typically set by the backend on creation/update
-    isSelected?: boolean; // For UI selection, not part of API
+    createdAt?: string;
+    updatedAt?: string;
+    isSelected?: boolean;
 }
 
 export enum DiscountTypeEnum {
@@ -26,10 +26,10 @@ export enum DiscountTypeEnum {
 export enum CouponStatusEnum {
     Active = 0,
     Expired = 1,
-    Inactive = 2 // Represents 'Coupon Used' or disabled
+    Inactive = 2
 }
 
 export enum CouponTypeEnum {
-    Generated = 0, // For customer-specific coupons
-    Community = 1 // For specific communities
+    Generated = 0,
+    Community = 1
 }

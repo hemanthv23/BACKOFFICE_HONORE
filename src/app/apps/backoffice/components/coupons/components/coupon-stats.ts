@@ -44,7 +44,7 @@ export class CouponStats {
      * @returns The sum of usage counts.
      */
     getTotalUsage(): number {
-        return this.allCoupons.reduce((sum, coupon) => sum + (coupon.usageCount || 0), 0);
+        return this.allCoupons.reduce((sum, coupon) => sum + (coupon.maxUsage || 0), 0);
     }
 
     /**
@@ -67,7 +67,7 @@ export class CouponStats {
                     totalSavings += (coupon.discountValue / 100) * averageTransactionValue * coupon.usageCount;
                 }
             }
-            return totalSavings;
+            return this.allCoupons.reduce((sum, coupon) => sum + coupon.discountValue, 0);
         }, 0);
     }
 
