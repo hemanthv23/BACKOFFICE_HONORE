@@ -1,114 +1,97 @@
-import { Coupon, CouponStatusEnum, CouponTypeEnum, DiscountTypeEnum } from '../interfaces';
-import { CouponData } from './coupon-data';
-import { CouponFiltering } from './coupon-filtering';
+// ==========================================================
+// src/app/apps/backoffice/components/coupons/components/coupon-modals.ts
+// Manages the state and logic for coupon creation and editing modals.
+// ==========================================================
 
+import { Injectable } from '@angular/core';
+import { Coupon, DiscountTypeEnum, CouponStatusEnum, CouponTypeEnum } from '../interfaces';
+import { CouponData } from './coupon-data'; // Import CouponData
+import { CouponFiltering } from './coupon-filtering'; // Import CouponFiltering (if needed for re-filtering after modal close)
+
+@Injectable({
+    providedIn: 'root'
+})
 export class CouponModals {
-    public showModal: boolean = false;
-    public editingCoupon: boolean = false;
-    public modalType: 'Generate' | 'Community' | '' = '';
-    public currentCoupon: Coupon = this.initializeNewCoupon();
-    public numberOfCouponsToGenerate: number = 1;
+    showModal: boolean = false;
+    editingCoupon: boolean = false;
+    modalType: 'Generate' | 'Community' | 'Edit' = 'Generate'; // To distinguish between add types and edit
+    currentCoupon: Coupon = this.resetCoupon();
 
-    // Mock options for community selection
-    public communityOptions: string[] = ['Tech Innovators', 'Digital Creators', 'Startup Hub', 'Global Connect'];
+    // Mock options for community names - replace with actual data from an API if available
+    communityOptions: string[] = ['LocalDevs', 'GamersHub', 'FoodiesUnited', 'Tech Enthusiasts'];
 
     constructor(
         private couponData: CouponData,
         private couponFiltering: CouponFiltering
     ) {}
 
-    private initializeNewCoupon(): Coupon {
+    private resetCoupon(): Coupon {
+        // Initializes a new coupon with default values
         return {
-            id: 0, // Will be set by CouponData
+            id: 0,
             name: '',
-            code: this.generateRandomCode(),
+            code: '',
             description: '',
             discountType: DiscountTypeEnum.Percentage,
             discountValue: 0,
             status: CouponStatusEnum.Active,
-            startDate: new Date().toISOString().split('T')[0], // Today's date
-            endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days from now
+            startDate: new Date().toISOString().substring(0, 10), // Current date as 'YYYY-MM-DD'
+            endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().substring(0, 10), // One year from now
             usageCount: 0,
-            maxUsage: undefined,
-            customerName: undefined,
-            communityName: undefined,
-            type: CouponTypeEnum.Generated, // Default
+            maxUsage: null, // Nullable
+            customerName: null, // Nullable
+            communityName: null, // Nullable
+            type: CouponTypeEnum.Generated, // Default to Generated
             isSelected: false
         };
     }
 
-    private generateRandomCode(length: number = 8): string {
-        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let result = '';
-        for (let i = 0; i < length; i++) {
-            result += characters.charAt(Math.floor(Math.random() * characters.length));
-        }
-        return result;
-    }
-
+    /**
+     * Shows the create coupon modal, initializing a new coupon.
+     * @param type 'Generate' for customer coupons, 'Community' for community coupons.
+     */
     showCreateModal(type: 'Generate' | 'Community'): void {
         this.editingCoupon = false;
         this.modalType = type;
-        this.currentCoupon = this.initializeNewCoupon();
-        // Set default type based on modal type
-        this.currentCoupon.type = type === 'Generate' ? CouponTypeEnum.Generated : CouponTypeEnum.Community;
-        this.showModal = true;
-    }
+        this.currentCoupon = this.resetCoupon(); // Reset to a fresh coupon
 
-    editCoupon(coupon: Coupon): void {
-        this.editingCoupon = true;
-        this.modalType = coupon.type === CouponTypeEnum.Generated ? 'Generate' : 'Community';
-        // Create a deep copy to avoid direct mutation
-        this.currentCoupon = { ...coupon };
-        this.showModal = true;
-    }
-
-    saveCoupon(): void {
-        // Basic validation
-        if (!this.currentCoupon.name || !this.currentCoupon.code || !this.currentCoupon.description || this.currentCoupon.discountValue === undefined || !this.currentCoupon.startDate || !this.currentCoupon.endDate) {
-            alert('Please fill in all required fields.');
-            return;
-        }
-
-        if (this.currentCoupon.type === CouponTypeEnum.Community && !this.currentCoupon.communityName) {
-            alert('Please select a community name for community coupons.');
-            return;
-        }
-
-        if (new Date(this.currentCoupon.startDate) > new Date(this.currentCoupon.endDate)) {
-            alert('Start Date cannot be after End Date.');
-            return;
-        }
-
-        if (this.editingCoupon) {
-            this.couponData.updateCoupon(this.currentCoupon);
-            alert('Coupon updated successfully!');
+        // Set specific type for new coupon
+        if (type === 'Community') {
+            this.currentCoupon.type = CouponTypeEnum.Community;
+            this.currentCoupon.customerName = null; // Ensure customerName is null for community coupons
         } else {
-            if (this.modalType === 'Generate') {
-                for (let i = 0; i < this.numberOfCouponsToGenerate; i++) {
-                    const newCoupon = {
-                        ...this.currentCoupon,
-                        code: this.generateRandomCode(), // Generate unique code for each
-                        customerName: this.currentCoupon.customerName || undefined,
-                        type: CouponTypeEnum.Generated
-                    };
-                    this.couponData.addCoupon(newCoupon);
-                }
-                alert(`${this.numberOfCouponsToGenerate} coupons generated successfully!`);
-            } else {
-                this.couponData.addCoupon(this.currentCoupon);
-                alert('Community coupon created successfully!');
-            }
+            // 'Generate'
+            this.currentCoupon.type = CouponTypeEnum.Generated;
+            this.currentCoupon.communityName = null; // Ensure communityName is null for generated coupons
         }
-        this.couponFiltering.filterCoupons(); // Refresh the filtered list
-        this.closeModal();
+
+        this.showModal = true;
     }
 
+    /**
+     * Shows the edit coupon modal, pre-populating with existing coupon data.
+     * @param coupon The coupon to be edited.
+     */
+    showEditModal(coupon: Coupon): void {
+        this.editingCoupon = true;
+        this.modalType = coupon.type === CouponTypeEnum.Community ? 'Community' : 'Generate'; // Set modal type based on coupon type
+        this.currentCoupon = { ...coupon }; // Create a copy to avoid direct mutation of the original object
+        // Ensure date inputs are in 'YYYY-MM-DD' format
+        this.currentCoupon.startDate = coupon.startDate ? new Date(coupon.startDate).toISOString().substring(0, 10) : '';
+        this.currentCoupon.endDate = coupon.endDate ? new Date(coupon.endDate).toISOString().substring(0, 10) : '';
+        this.showModal = true;
+    }
+
+    /**
+     * Closes the coupon modal and resets the current coupon form.
+     */
     closeModal(): void {
         this.showModal = false;
+        this.currentCoupon = this.resetCoupon(); // Reset form
         this.editingCoupon = false;
-        this.modalType = '';
-        this.currentCoupon = this.initializeNewCoupon();
-        this.numberOfCouponsToGenerate = 1;
+        this.modalType = 'Generate';
     }
+
+    // Removed checkCouponCodeUniqueness and generateUniqueCode methods
+    // as their corresponding API endpoints are no longer in the final list.
 }

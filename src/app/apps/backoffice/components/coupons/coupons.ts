@@ -7,24 +7,26 @@
 //          Reverted 'Actions' column to only Edit and Delete icons as requested.
 //          Improved mobile readability of coupon list items by adjusting label font weight.
 // ==========================================================
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core'; // Added OnDestroy
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http'; // Import HttpClientModule for HTTP client functionality
 
 // Import all modular logic classes and interfaces
-import { Coupon, DiscountTypeEnum, CouponStatusEnum, CouponTypeEnum } from './interfaces'; // Updated import
-import { CouponData } from './components/coupon-data';
+import { Coupon, DiscountTypeEnum, CouponStatusEnum, CouponTypeEnum } from './interfaces';
+import { CouponData } from './components/coupon-data'; // The service we made injectable
 import { CouponFiltering } from './components/coupon-filtering';
 import { CouponModals } from './components/coupon-modals';
 import { CouponStats } from './components/coupon-stats';
 import { CouponDisplayUtils } from './components/coupon-display-utils';
 import { CouponSelection } from './components/coupon-selection';
+import { Observable, Subscription } from 'rxjs'; // Import Subscription for managing subscriptions
 
 @Component({
     selector: 'app-coupons',
     standalone: true,
-    imports: [CommonModule, RouterLink, FormsModule],
+    imports: [CommonModule, RouterLink, FormsModule, HttpClientModule], // Add HttpClientModule here
     template: `
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
@@ -125,7 +127,7 @@ import { CouponSelection } from './components/coupon-selection';
                                     type="text"
                                     [(ngModel)]="couponFiltering.searchTerm"
                                     (input)="applyFilterAndSelectionUpdate()"
-                                    placeholder="Search coupons..."
+                                    placeholder="Search coupons by name..."
                                     class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent w-full sm:w-64"
                                 />
                                 <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
@@ -144,13 +146,13 @@ import { CouponSelection } from './components/coupon-selection';
                         </div>
                         <div class="flex flex-col sm:flex-row gap-2">
                             <button
-                                (click)="couponSelection.deleteSelectedCoupons()"
+                                (click)="deleteSelectedCouponsAndRefresh()"
                                 [disabled]="couponSelection.selectedCoupons.length === 0"
                                 class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <i class="fas fa-trash"></i> Delete Selected
                             </button>
-                            <button (click)="couponSelection.deleteExpiredCoupons()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2">
+                            <button (click)="deleteExpiredCouponsAndRefresh()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2">
                                 <i class="fas fa-trash"></i> Delete Expired
                             </button>
                         </div>
@@ -206,10 +208,10 @@ import { CouponSelection } from './components/coupon-selection';
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center space-x-2">
-                                            <button (click)="couponModals.editCoupon(coupon)" class="text-blue-600 hover:text-blue-900">
+                                            <button (click)="editCouponAndOpenModal(coupon)" class="text-blue-600 hover:text-blue-900">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button (click)="couponSelection.deleteCoupon(coupon.id)" class="text-red-600 hover:text-red-900">
+                                            <button (click)="deleteCouponAndRefresh(coupon.id)" class="text-red-600 hover:text-red-900">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -263,10 +265,10 @@ import { CouponSelection } from './components/coupon-selection';
                                 </div>
                             </div>
                             <div class="flex justify-end space-x-2 mt-4">
-                                <button (click)="couponModals.editCoupon(coupon)" class="text-blue-600 hover:text-blue-900 p-2 rounded-full bg-blue-100">
+                                <button (click)="editCouponAndOpenModal(coupon)" class="text-blue-600 hover:text-blue-900 p-2 rounded-full bg-blue-100">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button (click)="couponSelection.deleteCoupon(coupon.id)" class="text-red-600 hover:text-red-900 p-2 rounded-full bg-red-100">
+                                <button (click)="deleteCouponAndRefresh(coupon.id)" class="text-red-600 hover:text-red-900 p-2 rounded-full bg-red-100">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -281,7 +283,7 @@ import { CouponSelection } from './components/coupon-selection';
                     <h3 class="flex-shrink-0 text-2xl font-semibold text-gray-900 mb-6">{{ couponModals.editingCoupon ? 'Edit Coupon' : couponModals.modalType === 'Generate' ? 'Generate New Coupon' : 'Create Community Coupon' }}</h3>
 
                     <div class="flex-grow overflow-y-auto -mr-4 pr-4">
-                        <form (ngSubmit)="couponModals.saveCoupon()" class="space-y-4">
+                        <form (ngSubmit)="saveCouponAndRefresh()" class="space-y-4">
                             <div>
                                 <label for="couponName" class="block text-sm font-medium text-gray-700 mb-1">Coupon Name<span class="text-red-500">*</span></label>
                                 <input
@@ -310,97 +312,98 @@ import { CouponSelection } from './components/coupon-selection';
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Discount Type <span class="text-red-500">*</span></label>
-                                        <select
-                                            [(ngModel)]="couponModals.currentCoupon.discountType"
-                                            name="discountType"
-                                            required
-                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        >
-                                            <option [value]="DiscountTypeEnum.Percentage">Percentage (%)</option>
-                                            <option [value]="DiscountTypeEnum.Fixed">Fixed Amount (₹)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label for="code" class="block text-sm font-medium text-gray-700 mb-1">Coupon Code <span class="text-red-500">*</span></label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
                                         <input
                                             type="text"
-                                            id="code"
-                                            [(ngModel)]="couponModals.currentCoupon.code"
-                                            name="code"
-                                            required
-                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label for="discountValue" class="block text-sm font-medium text-gray-700 mb-1">Discount Value <span class="text-red-500">*</span></label>
-                                        <input
-                                            type="number"
-                                            id="discountValue"
-                                            [(ngModel)]="couponModals.currentCoupon.discountValue"
-                                            name="discountValue"
-                                            required
-                                            min="0"
-                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                            [value]="couponModals.currentCoupon.type === CouponTypeEnum.Community ? 'Community' : 'Generated'"
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 cursor-not-allowed sm:text-sm"
+                                            readonly
                                         />
                                     </div>
                                 </div>
                             </ng-container>
+
                             <ng-container *ngIf="couponModals.modalType === 'Generate'">
-                                <div>
-                                    <label for="numberOfCoupons" class="block text-sm font-medium text-gray-700 mb-1">Number of Coupons to Generate</label>
-                                    <input
-                                        type="number"
-                                        id="numberOfCoupons"
-                                        [(ngModel)]="couponModals.numberOfCouponsToGenerate"
-                                        name="numberOfCoupons"
-                                        min="1"
-                                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                    />
-                                </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Discount Type <span class="text-red-500">*</span></label>
-                                        <select
-                                            [(ngModel)]="couponModals.currentCoupon.discountType"
-                                            name="discountType"
-                                            required
+                                        <label for="customerName" class="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                                        <input
+                                            type="text"
+                                            id="customerName"
+                                            [(ngModel)]="couponModals.currentCoupon.customerName"
+                                            name="customerName"
                                             class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        >
-                                            <option [value]="DiscountTypeEnum.Percentage">Percentage (%)</option>
-                                            <option [value]="DiscountTypeEnum.Fixed">Fixed Amount (₹)</option>
-                                        </select>
+                                        />
                                     </div>
                                     <div>
-                                        <label for="discountValue" class="block text-sm font-medium text-gray-700 mb-1">Discount Value <span class="text-red-500">*</span></label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
                                         <input
-                                            type="number"
-                                            id="discountValue"
-                                            [(ngModel)]="couponModals.currentCoupon.discountValue"
-                                            name="discountValue"
-                                            required
-                                            min="0"
-                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                            type="text"
+                                            [value]="couponModals.currentCoupon.type === CouponTypeEnum.Community ? 'Community' : 'Generated'"
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 cursor-not-allowed sm:text-sm"
+                                            readonly
                                         />
                                     </div>
                                 </div>
                             </ng-container>
+
                             <div>
-                                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description <span class="text-red-500">*</span></label>
+                                <label for="couponCode" class="block text-sm font-medium text-gray-700 mb-1">Coupon Code<span class="text-red-500">*</span></label>
+                                <div class="flex">
+                                    <input
+                                        type="text"
+                                        id="couponCode"
+                                        [(ngModel)]="couponModals.currentCoupon.code"
+                                        name="couponCode"
+                                        required
+                                        class="mt-1 block w-full border border-gray-300 rounded-l-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                        [readonly]="couponModals.editingCoupon"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <textarea
                                     id="description"
                                     [(ngModel)]="couponModals.currentCoupon.description"
                                     name="description"
                                     rows="3"
-                                    required
-                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-sm sm:text-base"
+                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
                                 ></textarea>
                             </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+
+                            <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Start Date <span class="text-red-500">*</span></label>
+                                    <label for="discountType" class="block text-sm font-medium text-gray-700 mb-1">Discount Type<span class="text-red-500">*</span></label>
+                                    <select
+                                        id="discountType"
+                                        [(ngModel)]="couponModals.currentCoupon.discountType"
+                                        name="discountType"
+                                        required
+                                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                    >
+                                        <option [value]="DiscountTypeEnum.Percentage">Percentage</option>
+                                        <option [value]="DiscountTypeEnum.Fixed">Fixed Amount</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="discountValue" class="block text-sm font-medium text-gray-700 mb-1">Discount Value<span class="text-red-500">*</span></label>
+                                    <input
+                                        type="number"
+                                        id="discountValue"
+                                        [(ngModel)]="couponModals.currentCoupon.discountValue"
+                                        name="discountValue"
+                                        required
+                                        min="0"
+                                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="startDate" class="block text-sm font-medium text-gray-700 mb-1">Start Date<span class="text-red-500">*</span></label>
                                     <input
                                         type="date"
                                         id="startDate"
@@ -411,7 +414,7 @@ import { CouponSelection } from './components/coupon-selection';
                                     />
                                 </div>
                                 <div>
-                                    <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">End Date <span class="text-red-500">*</span></label>
+                                    <label for="endDate" class="block text-sm font-medium text-gray-700 mb-1">End Date<span class="text-red-500">*</span></label>
                                     <input
                                         type="date"
                                         id="endDate"
@@ -423,40 +426,46 @@ import { CouponSelection } from './components/coupon-selection';
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <div>
                                 <label for="maxUsage" class="block text-sm font-medium text-gray-700 mb-1">Max Usage (Optional)</label>
                                 <input
                                     type="number"
                                     id="maxUsage"
                                     [(ngModel)]="couponModals.currentCoupon.maxUsage"
                                     name="maxUsage"
-                                    min="1"
+                                    min="0"
                                     class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
                                 />
                             </div>
 
-                            <div *ngIf="couponModals.modalType === 'Generate'">
-                                <label for="customerName" class="block text-sm font-medium text-gray-700 mb-1">Customer Name (Optional)</label>
-                                <input
-                                    type="text"
-                                    id="customerName"
-                                    [(ngModel)]="couponModals.currentCoupon.customerName"
-                                    name="customerName"
+                            <div>
+                                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status<span class="text-red-500">*</span></label>
+                                <select
+                                    id="status"
+                                    [(ngModel)]="couponModals.currentCoupon.status"
+                                    name="status"
+                                    required
                                     class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                />
-                            </div>
-
-                            <div class="flex justify-end space-x-3 mt-6">
-                                <button
-                                    type="button"
-                                    (click)="couponModals.closeModal()"
-                                    class="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
                                 >
-                                    Cancel
-                                </button>
-                                <button type="submit" class="px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
-                                    {{ couponModals.editingCoupon ? 'Update Coupon' : 'Save Coupon' }}
-                                </button>
+                                    <option [value]="CouponStatusEnum.Active">Active</option>
+                                    <option [value]="CouponStatusEnum.Inactive">Inactive</option>
+                                    <option [value]="CouponStatusEnum.Expired">Expired</option>
+                                </select>
+                            </div>
+
+                            <div class="pt-4 flex-shrink-0">
+                                <div class="flex justify-end space-x-3">
+                                    <button
+                                        type="button"
+                                        (click)="couponModals.closeModal()"
+                                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                                        {{ couponModals.editingCoupon ? 'Update Coupon' : 'Add Coupon' }}
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -466,37 +475,191 @@ import { CouponSelection } from './components/coupon-selection';
     `,
     styleUrls: []
 })
-export class CouponsComponent implements OnInit {
-    couponData: CouponData;
-    couponFiltering: CouponFiltering;
-    couponModals: CouponModals;
-    couponStats: CouponStats;
-    couponDisplayUtils: CouponDisplayUtils;
-    couponSelection: CouponSelection;
+export class CouponsComponent implements OnInit, OnDestroy {
+    // Added OnDestroy
+    // Inject the CouponData service, and other helper services
+    constructor(
+        public couponData: CouponData, // Inject CouponData
+        public couponFiltering: CouponFiltering,
+        public couponModals: CouponModals,
+        public couponStats: CouponStats,
+        public couponDisplayUtils: CouponDisplayUtils,
+        public couponSelection: CouponSelection
+    ) {
+        // Pass the injected couponData instance to other helper classes that need it
+        // Note: For CouponFiltering, CouponModals, CouponStats, CouponSelection to properly use
+        // the *injected* CouponData, they should also be @Injectable() services and injected
+        // directly by Angular. The manual instantiation below is a workaround if they are not.
+        // The most robust solution is to make all related classes `@Injectable()` and inject them.
+        this.couponFiltering = new CouponFiltering(this.couponData);
+        this.couponModals = new CouponModals(this.couponData, this.couponFiltering); // couponFiltering might also need to be injected
+        this.couponStats = new CouponStats(this.couponData);
+        this.couponDisplayUtils = new CouponDisplayUtils(); // No dependencies
+        this.couponSelection = new CouponSelection(this.couponFiltering, this.couponData); // couponFiltering might also need to be injected
+
+        console.log('Professional Coupon Management System loaded with API Integration!');
+    }
 
     // Expose enums to the template
     public CouponStatusEnum = CouponStatusEnum;
     public DiscountTypeEnum = DiscountTypeEnum;
     public CouponTypeEnum = CouponTypeEnum;
 
-    constructor() {
-        this.couponData = new CouponData();
-        this.couponFiltering = new CouponFiltering(this.couponData);
-        this.couponModals = new CouponModals(this.couponData, this.couponFiltering);
-        this.couponStats = new CouponStats(this.couponData);
-        this.couponDisplayUtils = new CouponDisplayUtils();
-        this.couponSelection = new CouponSelection(this.couponFiltering, this.couponData);
-        console.log('Professional Coupon Management System loaded!');
-    }
+    // A subscription to manage the data stream from CouponData service
+    private couponsSubscription: Subscription | undefined;
 
     ngOnInit(): void {
-        // Initial filtering is handled by the constructor of CouponFiltering.
+        // Fetch all coupons when the component initializes
+        this.couponsSubscription = this.couponData.getAllCoupons().subscribe({
+            next: (coupons) => {
+                // Initial data load and filter
+                this.couponFiltering.allCoupons = coupons; // Update allCoupons in filtering
+                this.couponFiltering.filterCoupons(); // Apply initial filters
+                this.couponStats.updateStats(); // Update stats based on fetched data
+            },
+            error: (err) => console.error('Error fetching coupons on init:', err)
+        });
+
+        // Subscribe to changes in allCoupons$ from CouponData
+        this.couponData.allCoupons$.subscribe((coupons) => {
+            this.couponFiltering.allCoupons = coupons; // Keep the filtering service updated
+            this.couponFiltering.filterCoupons(); // Re-apply filter whenever data changes
+            this.couponStats.updateStats(); // Re-calculate stats
+            // Re-select checked coupons based on the updated list
+            this.couponSelection.selectedCoupons = this.couponFiltering.filteredCoupons.filter((c) => c.isSelected);
+        });
     }
 
+    // It's good practice to unsubscribe to prevent memory leaks
+    ngOnDestroy(): void {
+        if (this.couponsSubscription) {
+            this.couponsSubscription.unsubscribe();
+        }
+    }
+
+    // This method will now trigger filtering based on the data in couponData.allCoupons$ (which is kept updated by the service)
     applyFilterAndSelectionUpdate(): void {
         this.couponFiltering.filterCoupons();
+        // Ensure selected coupons are still valid within the filtered list
         this.couponSelection.selectedCoupons = this.couponFiltering.filteredCoupons.filter((c) => c.isSelected);
     }
 
-    // Removed the getCouponStatusString method from here, it's now in CouponDisplayUtils
+    // Handles saving a coupon (add or update)
+    saveCouponAndRefresh(): void {
+        if (this.couponModals.editingCoupon) {
+            // Update existing coupon
+            this.couponData.updateCoupon(this.couponModals.currentCoupon).subscribe({
+                next: () => {
+                    console.log('Coupon updated successfully!');
+                    this.couponModals.closeModal();
+                    // Data automatically refreshes via allCoupons$ subscription in ngOnInit
+                },
+                error: (err) => console.error('Error updating coupon:', err)
+            });
+        } else {
+            // Add new coupon
+            this.couponData.addCoupon(this.couponModals.currentCoupon).subscribe({
+                next: () => {
+                    console.log('Coupon added successfully!');
+                    this.couponModals.closeModal();
+                    // Data automatically refreshes via allCoupons$ subscription in ngOnInit
+                },
+                error: (err) => console.error('Error adding coupon:', err)
+            });
+        }
+    }
+
+    // Handles deleting a single coupon
+    deleteCouponAndRefresh(id: number): void {
+        if (confirm('Are you sure you want to delete this coupon?')) {
+            this.couponData.deleteCoupon(id).subscribe({
+                next: () => {
+                    console.log(`Coupon with ID ${id} deleted successfully.`);
+                    // Data automatically refreshes via allCoupons$ subscription in ngOnInit
+                },
+                error: (err) => console.error('Error deleting coupon:', err)
+            });
+        }
+    }
+
+    // Handles deleting all selected coupons
+    deleteSelectedCouponsAndRefresh(): void {
+        if (this.couponSelection.selectedCoupons.length === 0) {
+            alert('No coupons selected for deletion.');
+            return;
+        }
+
+        if (confirm(`Are you sure you want to delete ${this.couponSelection.selectedCoupons.length} selected coupon(s)?`)) {
+            const deleteObservables = this.couponSelection.selectedCoupons.map((coupon) => this.couponData.deleteCoupon(coupon.id));
+
+            let successCount = 0;
+            let errorCount = 0;
+            const totalToDelete = deleteObservables.length;
+
+            deleteObservables.forEach((obs) => {
+                obs.subscribe({
+                    next: () => {
+                        successCount++;
+                        if (successCount + errorCount === totalToDelete) {
+                            console.log(`Successfully deleted ${successCount} coupons. Failed to delete ${errorCount} coupons.`);
+                            this.couponSelection.clearSelections(); // Clear selection after operations
+                            // Data automatically refreshes via allCoupons$ subscription in ngOnInit
+                        }
+                    },
+                    error: (err) => {
+                        errorCount++;
+                        console.error('Error deleting selected coupon:', err);
+                        if (successCount + errorCount === totalToDelete) {
+                            console.log(`Successfully deleted ${successCount} coupons. Failed to delete ${errorCount} coupons.`);
+                            this.couponSelection.clearSelections();
+                            // Data automatically refreshes via allCoupons$ subscription in ngOnInit
+                        }
+                    }
+                });
+            });
+        }
+    }
+
+    // Handles deleting all expired coupons
+    deleteExpiredCouponsAndRefresh(): void {
+        const expiredCoupons = this.couponFiltering.allCoupons.filter((coupon) => coupon.status === CouponStatusEnum.Expired);
+
+        if (expiredCoupons.length === 0) {
+            alert('No expired coupons found to delete.');
+            return;
+        }
+
+        if (confirm(`Are you sure you want to delete ${expiredCoupons.length} expired coupon(s)?`)) {
+            const deleteObservables = expiredCoupons.map((coupon) => this.couponData.deleteCoupon(coupon.id));
+
+            let successCount = 0;
+            let errorCount = 0;
+            const totalToDelete = deleteObservables.length;
+
+            deleteObservables.forEach((obs) => {
+                obs.subscribe({
+                    next: () => {
+                        successCount++;
+                        if (successCount + errorCount === totalToDelete) {
+                            console.log(`Successfully deleted ${successCount} expired coupons. Failed to delete ${errorCount} coupons.`);
+                            // Data automatically refreshes via allCoupons$ subscription in ngOnInit
+                        }
+                    },
+                    error: (err) => {
+                        errorCount++;
+                        console.error('Error deleting expired coupon:', err);
+                        if (successCount + errorCount === totalToDelete) {
+                            console.log(`Successfully deleted ${successCount} expired coupons. Failed to delete ${errorCount} coupons.`);
+                            // Data automatically refreshes via allCoupons$ subscription in ngOnInit
+                        }
+                    }
+                });
+            });
+        }
+    }
+
+    // Opens the edit modal with the selected coupon's data
+    editCouponAndOpenModal(coupon: Coupon): void {
+        this.couponModals.showEditModal(coupon);
+    }
 }
